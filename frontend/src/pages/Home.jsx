@@ -23,7 +23,7 @@ export default function Home() {
       </section>
       <div className="grid">
         <section className="card">
-          <h2>🎙️ Talk to us</h2>
+          <h2>Talk to us</h2>
           <p className="muted">Ask about courses, eligibility, fees, scholarships, dates or documents - or apply for admission just by talking.</p>
           <VoiceAssistant
             mode="public"

@@ -10,7 +10,7 @@ function Header() {
   const navigate = useNavigate()
   return (
     <header className="top">
-      <Link className="logo" to="/">🎓 KIT</Link>
+      <Link className="logo" to="/">KIT</Link>
       <nav>
         <Link to="/history">History</Link>
         {user ? (

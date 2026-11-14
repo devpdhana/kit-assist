@@ -160,12 +160,18 @@ export default function VoiceAssistant({ mode, greeting, suggestions = [], onUna
         <button type="submit" className="primary" disabled={busy}>Send</button>
       </form>
 
-      <div className="suggestions">
-        {suggestions.map((s) => (
-          <button key={s} type="button" className="chip" onClick={() => sendText(s)}>{s}</button>
-        ))}
-      </div>
-      <button type="button" className="link" onClick={newConversation}>New conversation</button>
+      {messages.length <= 1 && (
+        <div className="suggestions">
+          {suggestions.slice(0, 3).map((s) => (
+            <button key={s} type="button" className="chip" onClick={() => sendText(s)}>{s}</button>
+          ))}
+        </div>
+      )}
+      {messages.length > 1 && (
+        <div className="assistant-footer">
+          <button type="button" className="link" onClick={newConversation}>New conversation</button>
+        </div>
+      )}
     </div>
   )
 }
