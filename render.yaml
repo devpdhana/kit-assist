@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: kit-assist
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: COLLEGE_API_BASE
+        value: https://ht.knowvally.com
+      - key: COLLEGE_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
