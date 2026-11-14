@@ -32,3 +32,15 @@ filterwarnings = ["ignore::SyntaxWarning", "ignore::DeprecationWarning"]
 
 [tool.uv]
 package = false
+
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP", "SIM", "I"]
+ignore = ["E501", "UP047"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI dependency injection uses calls in defaults by design.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]

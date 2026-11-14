@@ -1,7 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from './api'
-
-const AuthContext = createContext(null)
+import { AuthContext } from './useAuth'
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined) // undefined = loading, null = visitor
@@ -21,5 +20,3 @@ export function AuthProvider({ children }) {
   }
   return <AuthContext.Provider value={{ user, login, logout, refresh }}>{children}</AuthContext.Provider>
 }
-
-export const useAuth = () => useContext(AuthContext)

@@ -20,9 +20,12 @@ export default function VoiceAssistant({ mode, greeting, suggestions = [], onUna
   const [input, setInput] = useState('')
   const logRef = useRef(null)
   const handsFreeRef = useRef(false)
-  handsFreeRef.current = handsFree
   const { speaking, speak, cancel } = useSpeech()
   const startRef = useRef(() => {})
+
+  useEffect(() => {
+    handsFreeRef.current = handsFree // read from the TTS end callback
+  }, [handsFree])
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' })
@@ -102,7 +105,9 @@ export default function VoiceAssistant({ mode, greeting, suggestions = [], onUna
     },
     onError: setNote,
   })
-  startRef.current = recorder.start
+  useEffect(() => {
+    startRef.current = recorder.start // lets hands-free mode re-open the mic after speaking
+  }, [recorder.start])
 
   const onMic = () => {
     setNote('')

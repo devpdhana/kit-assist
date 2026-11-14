@@ -12,15 +12,6 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.graph import END, StateGraph
 
-# Our Pydantic DTOs stored in checkpoints (explicit allow-list, no pickle).
-CHECKPOINT_TYPES = [
-    ("src.dtos.supervisor", "QueryContext"),
-    ("src.dtos.supervisor", "SupervisorDecision"),
-    ("src.dtos.service", "ServiceResult"),
-    ("src.dtos.evaluation", "ResponseEvaluation"),
-    ("src.dtos.evaluation", "EvaluationCriterion"),
-]
-
 from src.workflows.nodes.nodes import (
     evaluation_node,
     human_confirmation_node,
@@ -31,6 +22,15 @@ from src.workflows.nodes.nodes import (
 )
 from src.workflows.routing.routing import route_from_supervisor
 from src.workflows.state.assistant_state import AssistantState
+
+# Our Pydantic DTOs stored in checkpoints (explicit allow-list, no pickle).
+CHECKPOINT_TYPES = [
+    ("src.dtos.supervisor", "QueryContext"),
+    ("src.dtos.supervisor", "SupervisorDecision"),
+    ("src.dtos.service", "ServiceResult"),
+    ("src.dtos.evaluation", "ResponseEvaluation"),
+    ("src.dtos.evaluation", "EvaluationCriterion"),
+]
 
 
 def build_assistant_workflow(checkpointer=None):

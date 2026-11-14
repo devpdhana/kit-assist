@@ -4,7 +4,7 @@
 import json
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from src.configs.config import settings
@@ -35,7 +35,7 @@ def init(path: str | None = None) -> None:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def save_turn(conversation_id: str, owner: str, role: str, user_text: str, reply: str, meta: dict) -> None:
@@ -68,7 +68,9 @@ def get_conversation(owners: list[str], cid: str) -> dict | None:
             {"sender": m["sender"], "text": m["text"], "created_at": m["created_at"], "meta": json.loads(m["meta"]) if m["meta"] else None}
             for m in _conn.execute("SELECT * FROM messages WHERE conversation_id = ? ORDER BY id", (cid,))
         ]
-    return {k: conv[k] for k in conv.keys() if k != "owner"} | {"messages": msgs}
+    # sqlite3.Row iterates values, not keys - .keys() is required here.
+    fields = {k: conv[k] for k in conv.keys() if k != "owner"}  # noqa: SIM118
+    return fields | {"messages": msgs}
 
 
 def delete_conversation(owners: list[str], cid: str) -> bool:

@@ -1,21 +1,27 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 
-const TYPE_LABEL = { handbook: 'Handbook', circular: 'Circular', brochure: 'Brochure', lesson_notes: 'Lesson notes' }
+const TYPE_LABEL = { handbook: 'Handbook', circular: 'Circular', brochure: 'Brochure', lesson_notes: 'Lesson notes', notice: 'Notice' }
 
 // Official documents with trust status. PDFs are served through our backend
 // proxy (/api/documents/{id}/file) so the college API key never reaches the browser.
+// Pass `documents` to render a known list, or omit it to fetch the user's list.
 export default function DocumentsCard({ documents: given, title = 'Official documents' }) {
-  const [docs, setDocs] = useState(given || null)
+  const [fetched, setFetched] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (given) return setDocs(given)
+    if (given) return
+    let cancelled = false
     api('/api/documents')
-      .then((d) => setDocs(d.documents))
-      .catch(() => setError('Could not load documents.'))
+      .then((d) => !cancelled && setFetched(d.documents))
+      .catch(() => !cancelled && setError('Could not load documents.'))
+    return () => {
+      cancelled = true
+    }
   }, [given])
 
+  const docs = given || fetched
   return (
     <section className="card">
       <h2>{title}</h2>

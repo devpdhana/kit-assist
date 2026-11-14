@@ -1,5 +1,6 @@
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { AuthProvider, useAuth } from './auth'
+import { AuthProvider } from './auth'
+import { useAuth } from './useAuth'
 import Assistant from './pages/Assistant'
 import History from './pages/History'
 import Home from './pages/Home'

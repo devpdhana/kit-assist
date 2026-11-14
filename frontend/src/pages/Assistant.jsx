@@ -1,5 +1,5 @@
 import { Navigate, useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth'
+import { useAuth } from '../useAuth'
 import DocumentsCard from '../components/DocumentsCard'
 import VoiceAssistant from '../components/VoiceAssistant'
 

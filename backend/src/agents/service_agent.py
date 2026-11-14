@@ -8,6 +8,7 @@ confirm -> executes the staged write with its Idempotency-Key
 """
 
 import asyncio
+import contextlib
 import logging
 import re
 import uuid
@@ -286,17 +287,13 @@ def _coerce(args: dict[str, Any]) -> dict[str, Any]:
         if v is None or (isinstance(v, str) and v.strip().lower() in ("", "null", "none")):
             continue
         if k in INT_ARGS:
-            try:
+            with contextlib.suppress(ValueError):
                 v = int(str(v).lstrip("#"))
-            except ValueError:
-                pass
         elif k == "half_day":
             v = str(v).lower() in ("true", "1", "yes")
         elif k == "twelfth_percent":
-            try:
+            with contextlib.suppress(ValueError):
                 v = float(str(v).rstrip("%"))
-            except ValueError:
-                pass
         out[k] = v
     return out
 

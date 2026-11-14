@@ -136,3 +136,14 @@ def test_calendar_entries_get_spoken_weekdays():
 
     e = _with_weekdays([{"date": "2026-11-28", "type": "working_day", "follows_weekday": 1}])[0]
     assert e["date_spoken"] == "Saturday, 28 November" and e["follows_timetable_of"] == "Monday"
+
+
+def test_history_is_owner_scoped_and_returns_messages():
+    from src.services import history_store
+
+    history_store.init(":memory:")
+    history_store.save_turn("c1", "user:arjun", "student", "hi", "hello", {"trace": []})
+    conv = history_store.get_conversation(["user:arjun"], "c1")
+    assert conv["messages"][0]["text"] == "hi" and "owner" not in conv
+    assert history_store.get_conversation(["user:priya"], "c1") is None
+    assert not history_store.delete_conversation(["user:priya"], "c1")

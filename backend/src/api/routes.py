@@ -93,8 +93,8 @@ async def health():
 async def public_info():
     try:
         profile, courses, today = await college.profile(), await college.courses(), await college.today()
-    except CollegeError:
-        raise HTTPException(502, "College system unavailable")
+    except CollegeError as exc:
+        raise HTTPException(502, "College system unavailable") from exc
     return {"profile": profile, "courses": courses, "today": today, "documents": kb.listing(None, "visitor")}
 
 
@@ -118,8 +118,8 @@ async def document_file(doc_id: int, s: Session = Depends(get_session)):
         raise HTTPException(404, "Not found")
     try:
         pdf = await college.document_file(doc_id)
-    except CollegeError:
-        raise HTTPException(502, "College system unavailable")
+    except CollegeError as exc:
+        raise HTTPException(502, "College system unavailable") from exc
     safe = re.sub(r"[^A-Za-z0-9._-]+", "_", doc["title"])[:80] or f"document_{doc_id}"
     return Response(
         content=pdf,
@@ -135,8 +135,8 @@ async def login(body: LoginIn, response: Response, s: Session = Depends(get_sess
         r = await college.login(body.login_id.strip().lower(), body.password)
     except CollegeError as exc:
         if exc.status in (400, 401, 403, 422):
-            raise HTTPException(401, "Invalid login ID or password.")
-        raise HTTPException(502, "College system unavailable, try again.")
+            raise HTTPException(401, "Invalid login ID or password.") from None  # never leak why
+        raise HTTPException(502, "College system unavailable, try again.") from exc
     store.rotate(s)
     _set_cookie(response, COOKIE, s.id, settings.SESSION_TTL_S)
     s.auth = {"token": r["access_token"], "user": r["user"], "expires_at": time.time() + min(r.get("expires_in", 28800), settings.SESSION_TTL_S)}
@@ -199,7 +199,7 @@ async def voice(request: Request, mode: Mode = "public", s: Session = Depends(ge
         text, provider = await transcribe(audio, request.headers.get("content-type", "audio/webm"))
     except STTError as exc:
         log.warning("STT failed: %s", exc)
-        raise HTTPException(503, "Speech recognition is unavailable right now. Please type your question.")
+        raise HTTPException(503, "Speech recognition is unavailable right now. Please type your question.") from exc
     stt = {"provider": provider, "ms": round((time.perf_counter() - t0) * 1000)}
     if not text:
         return {"transcript": "", "reply": "Sorry, I didn't catch that. Could you say it again?", "trace": [], "stt": stt}

@@ -62,9 +62,9 @@ class ResponseAgent:
         if sr is not None and sr.status == "executed" and not state.get("evaluation"):
             return sr.message, "template"  # exact confirmation from the system, no paraphrase risk
         ctx = state.get("context")
-        if ctx is not None and ctx.intent == "out_of_scope":
-            if state.get("role") == "visitor" and re.search(r"attendance|marks|request|student", state["user_query"], re.I):
-                return "Sorry, I can't share any student information here. Students can log in to see their own details.", "template"
+        asks_student_data = re.search(r"attendance|marks|request|student", state["user_query"], re.I)
+        if ctx is not None and ctx.intent == "out_of_scope" and state.get("role") == "visitor" and asks_student_data:
+            return "Sorry, I can't share any student information here. Students can log in to see their own details.", "template"
         if settings.has_llm:
             try:
                 ev = state.get("evaluation")

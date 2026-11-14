@@ -16,7 +16,7 @@ import logging
 import math
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pypdf import PdfReader
 
@@ -25,9 +25,7 @@ from src.services.college_client import college
 log = logging.getLogger("kb")
 
 STOP = set(
-    "a an the of to in on for and or is are be by with at as it this that from can i my me we you your do does what how when "
-    "which who will would should may there their was were has have not no if any all into than then so about many much per "
-    "tell please know want get got also just like".split()
+    ["a", "an", "the", "of", "to", "in", "on", "for", "and", "or", "is", "are", "be", "by", "with", "at", "as", "it", "this", "that", "from", "can", "i", "my", "me", "we", "you", "your", "do", "does", "what", "how", "when", "which", "who", "will", "would", "should", "may", "there", "their", "was", "were", "has", "have", "not", "no", "if", "any", "all", "into", "than", "then", "so", "about", "many", "much", "per", "tell", "please", "know", "want", "get", "got", "also", "just", "like"]
 )
 SYNONYMS = {
     "od": ["duty"],
@@ -78,9 +76,10 @@ def sanitize(text: str) -> str:
 
 def normalize_lines(page_text: str) -> list[str]:
     """Clean PDF lines and re-join headings that the extractor split word-by-word."""
+    # Ligatures (fi, fl) and undecodable glyphs from PDF extraction.
     page_text = page_text.replace("ﬁ", "fi").replace("ﬂ", "fl").replace("�", "·")
-    lines = [re.sub(r"\s+", " ", l).strip() for l in page_text.splitlines()]
-    lines = [l for l in lines if l and not HEADER_RE.search(l)]
+    lines = [re.sub(r"\s+", " ", ln).strip() for ln in page_text.splitlines()]
+    lines = [ln for ln in lines if ln and not HEADER_RE.search(ln)]
     out: list[str] = []
     buf: list[str] = []
     for line in lines:
@@ -205,9 +204,7 @@ def applies_to_user(applies_to: dict | None, user: dict) -> bool:
             return False
     sem = applies_to.get("semester")
     year = user.get("year_of_study")
-    if sem and year and sem not in (2 * year - 1, 2 * year):
-        return False
-    return True
+    return not (sem and year and sem not in (2 * year - 1, 2 * year))  # year N = semesters 2N-1, 2N
 
 
 class KnowledgeBase:
@@ -261,7 +258,7 @@ class KnowledgeBase:
             if before and added:  # anything appearing after the first sync is announced as new
                 self.new_ids |= {d["id"] for d in added}
                 log.info("new documents: %s", ", ".join(d["title"] for d in added))
-            self.last_sync = datetime.now(timezone.utc).isoformat()
+            self.last_sync = datetime.now(UTC).isoformat()
             self.last_error = None
             log.info("synced %d docs, %d chunks", len(docs), len(self.chunks))
         except Exception as exc:  # keep serving the previous index

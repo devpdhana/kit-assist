@@ -1,9 +1,8 @@
 """Date helpers: every relative date is resolved against the COLLEGE date, not the server clock."""
 
-from src.services.policy import WEEKDAYS, add_days, parse
-
-
 import re
+
+from src.services.policy import WEEKDAYS, add_days, parse
 
 DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]

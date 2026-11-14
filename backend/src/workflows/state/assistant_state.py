@@ -1,4 +1,4 @@
-from typing import Any, Optional, TypedDict
+from typing import Any, TypedDict
 
 
 class AssistantState(TypedDict, total=False):
@@ -6,7 +6,7 @@ class AssistantState(TypedDict, total=False):
     user_query: str
     role: str  # visitor | student | teacher
     user: dict  # public profile of the logged-in user (empty for visitors)
-    token: Optional[str]  # college bearer token - lives only in server memory
+    token: str | None  # college bearer token - lives only in server memory
     today: str  # college date (YYYY-MM-DD) from /v1/today
     history: list  # last few {role, content} turns
 
@@ -19,12 +19,12 @@ class AssistantState(TypedDict, total=False):
     # ---- worker outputs ----
     service_result: Any  # ServiceResult
     knowledge_result: Any  # list of passages
-    draft_reply: Optional[str]
+    draft_reply: str | None
     evaluation: Any  # ResponseEvaluation
 
     # ---- human-in-the-loop confirmation ----
-    pending_action: Optional[dict]  # staged write
-    confirmation: Optional[str]  # yes | no | new_query
+    pending_action: dict | None  # staged write
+    confirmation: str | None  # yes | no | new_query
     awaiting_confirmation: bool
 
     # ---- retry management ----
@@ -32,7 +32,7 @@ class AssistantState(TypedDict, total=False):
     response_attempts: int
 
     # ---- output / observability ----
-    final_reply: Optional[str]
+    final_reply: str | None
     workflow_status: str  # running | waiting_for_confirmation | completed | failed
     trace: list  # [{agent, action, detail, ms}]
-    last_error: Optional[str]
+    last_error: str | None
