@@ -22,6 +22,7 @@ from src.kb.api_catalog import CATALOG, ApiSpec, allowed, catalog_prompt
 from src.services import llm
 from src.services.college_client import CollegeError, college
 from src.services.dates import date_table, extract_dates
+from src.services.knowledge_base import kb
 from src.services.policy import add_days, can_decide, evaluate_request, pretty
 
 log = logging.getLogger("service")
@@ -85,7 +86,7 @@ class ServiceAgent:
             msg = "That needs access you don't have." if dropped else (plan.missing_info or "I couldn't find a college service for that.")
             return ServiceResult(status="needs_info", message=msg, calls=[{"engine": engine, "dropped": dropped}])
 
-        results = await asyncio.gather(*(self._read(c, token) for c in reads))
+        results = await asyncio.gather(*(self._read(c, token, state) for c in reads))
         failed = [r for r in results if not r["ok"]]
         if failed and all(r.get("retryable") for r in failed) and len(failed) == len(results) and not writes:
             return ServiceResult(status="error", calls=list(results), error={"message": failed[0]["error"], "retryable": True})
@@ -96,13 +97,23 @@ class ServiceAgent:
             return staged
         return ServiceResult(status="ok", calls=list(results))
 
-    async def _read(self, call: ApiCall, token: str | None) -> dict:
+    async def _read(self, call: ApiCall, token: str | None, state: dict | None = None) -> dict:
         spec = CATALOG[call.api]
         args = _coerce(call.arg_dict())
+        if spec.id == "list_documents":
+            # Served from the live-synced index: enriched with trust status + relevance, no extra network call.
+            state = state or {}
+            docs = kb.listing(state.get("user") or None, state.get("role", "visitor"), args.get("type"))
+            return {"api": call.api, "args": args, "ok": True, "data": docs}
         try:
+            if spec.id == "calendar":  # always look ahead: "is Saturday working?" must see next Saturday too
+                today = (state or {}).get("today")
+                if today:
+                    args["from"] = min(str(args.get("from") or today), today)
+                    args["to"] = max(str(args.get("to") or ""), add_days(today, 21))
             path, params = _build(spec, args)
             data = await college.request("GET", path, token=token, params=params)
-            return {"api": call.api, "args": args, "ok": True, "data": data}
+            return {"api": call.api, "args": args, "ok": True, "data": _with_weekdays(data)}
         except CollegeError as exc:
             return {"api": call.api, "args": args, "ok": False, "error": exc.message, "retryable": exc.retryable}
         except KeyError as exc:
@@ -290,6 +301,25 @@ def _coerce(args: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+_DATE_KEYS = ("date", "from_date", "to_date", "deadline")
+
+
+def _with_weekdays(data: Any) -> Any:
+    """Add spoken day names next to ISO dates - LLMs miscount weekdays otherwise."""
+    if isinstance(data, list):
+        return [_with_weekdays(x) for x in data]
+    if isinstance(data, dict):
+        out = dict(data)
+        for k in _DATE_KEYS:
+            v = out.get(k)
+            if isinstance(v, str) and re.match(r"^\d{4}-\d{2}-\d{2}$", v):
+                out[f"{k}_spoken"] = pretty(v)
+        if out.get("follows_weekday"):
+            out["follows_timetable_of"] = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][int(out["follows_weekday"])]
+        return out
+    return data
+
+
 async def _safe(coro, default):
     try:
         return await coro
@@ -359,6 +389,9 @@ def plan_by_rules(state: dict) -> ServicePlan:
             return ServicePlan(calls=[call("placement_drives"), call("my_academics")])
         if re.search(r"cgpa|arrear|profile", q):
             return ServicePlan(calls=[call("my_academics")])
+    if re.search(r"circulars?|documents?|handbook edition|which handbook|announcement|notes available", q):
+        dtype = "circular" if "circular" in q else "handbook" if "handbook" in q else None
+        return ServicePlan(calls=[call("list_documents", **({"type": dtype} if dtype else {}))])
     if re.search(r"placement|drive|compan|recruit", q):
         return ServicePlan(calls=[call("placement_drives")])
     if re.search(r"apply|application", q) and role == "visitor":

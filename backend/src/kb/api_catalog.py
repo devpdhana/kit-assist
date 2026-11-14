@@ -37,6 +37,15 @@ CATALOG: dict[str, ApiSpec] = {
         ApiSpec("college_profile", "GET", "/v1/college", ALL, "College name, intro and contact details."),
         ApiSpec("today", "GET", "/v1/today", ALL, "The college's current date."),
         ApiSpec("list_courses", "GET", "/v1/courses", ALL, "B.Tech courses: code, minimum 12th %, annual fee, hostel fee, seats."),
+        ApiSpec(
+            "list_documents",
+            "GET",
+            "/v1/documents",
+            ALL,
+            "Official documents available (handbook editions, circulars, brochure, lesson notes) with status (in force / current / superseded), "
+            "effective date, whether it applies to this user, and whether it is new. Use for 'what circulars/documents are there', 'which handbook applies'.",
+            {"type": "handbook | circular | brochure | lesson_notes (optional filter)"},
+        ),
         ApiSpec("placement_drives", "GET", "/v1/placements/drives", ("visitor", "student"), "Active placement drives with eligibility (CGPA, departments, years), deadline, seats left."),
         ApiSpec(
             "submit_admission_application",

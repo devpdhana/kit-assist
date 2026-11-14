@@ -36,6 +36,32 @@ JUDGE = ChatPromptTemplate.from_messages([
 ])
 
 
+WEEKDAY_NAMES = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+MONTH_NAMES = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
+DAY_DATE_RE = re.compile(
+    r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday),?\s+(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?"
+    r"(january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+(\d{4}))?",
+    re.I,
+)
+
+
+def weekday_mismatches(reply: str, today: str) -> list[str]:
+    """Find 'Weekday, D Month' phrases whose weekday is wrong for that date."""
+    from datetime import date
+
+    out = []
+    for m in DAY_DATE_RE.finditer(reply):
+        year = int(m.group(4) or today[:4])
+        try:
+            d = date(year, MONTH_NAMES.index(m.group(3).lower()) + 1, int(m.group(2)))
+        except ValueError:
+            continue
+        actual = WEEKDAY_NAMES[d.weekday()]
+        if actual != m.group(1).lower():
+            out.append(f"{m.group(2)} {m.group(3)} is a {actual.title()}, not {m.group(1).title()}")
+    return out
+
+
 def _numbers(text: str) -> set[str]:
     return {n.rstrip("0").rstrip(".") if "." in n else n for n in NUM_RE.findall(text)}
 
@@ -55,6 +81,12 @@ class EvaluationAgent:
         crit.append(EvaluationCriterion(name="grounding", score=g, weight=30, feedback=f"unsupported numbers: {unsupported}" if unsupported else "all numbers grounded"))
         if unsupported:
             fixes.append(f"Remove or correct numbers not in the evidence: {', '.join(unsupported)}")
+
+        # weekday/date consistency ("Friday, 25 November" when the 25th is a Wednesday)
+        wrong_days = weekday_mismatches(reply, state["today"])
+        crit.append(EvaluationCriterion(name="date_consistency", score=0 if wrong_days else 100, weight=15, feedback="; ".join(wrong_days)))
+        if wrong_days:
+            critical.append("Wrong weekday for a date: " + "; ".join(wrong_days))
 
         # honesty about actions
         # Only meaningful when an action was involved (rule text like "is rejected" is not a claim).

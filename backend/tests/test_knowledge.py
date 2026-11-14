@@ -48,3 +48,48 @@ def test_search_prefers_circular_and_demotes_superseded():
     assert hits[0].type == "circular" and hits[-1].status == "superseded"
     assert "CIRCULAR IN FORCE" in kb.label(hits[0])
     assert tokenize("on-duty") == tokenize("on duty")
+
+
+# ---------------- document listing ----------------
+from src.services.knowledge_base import applies_to_user  # noqa: E402
+
+ARJUN = {"role": "student", "programme": "UG", "department": "CSE", "year_of_study": 2}
+ECE_STUDENT = {**ARJUN, "department": "ECE"}
+
+
+def _kb_with_notes():
+    docs = DOCS[:3] + [{"id": 4, "title": "DBMS Lesson Notes - Units 1 to 3", "type": "lesson_notes", "version": "2026.1",
+                        "effective_date": "2026-10-22", "applies_to": {"departments": ["CSE"], "semester": 3}, "is_surprise": False}]
+    kb = KnowledgeBase()
+    kb.load(docs, {}, "2026-11-21")
+    return kb
+
+
+def test_listing_hides_lesson_notes_from_visitors_and_labels_status():
+    kb = _kb_with_notes()
+    visitor = kb.listing(None, "visitor")
+    assert all(d["type"] != "lesson_notes" for d in visitor)
+    status = {d["id"]: d["status"] for d in visitor}
+    assert status[1].startswith("superseded") and status[5].startswith("circular in force")
+    assert all(d["download"] == f"/api/documents/{d['id']}/file" for d in visitor)
+
+
+def test_listing_marks_relevance_and_filters_by_type():
+    kb = _kb_with_notes()
+    notes = kb.listing(ARJUN, "student", "lesson_notes")
+    assert len(notes) == 1 and notes[0]["applies_to_you"] is True
+    assert kb.listing(ECE_STUDENT, "student", "lesson_notes")[0]["applies_to_you"] is False
+    assert [d["type"] for d in kb.listing(ARJUN, "student", "circular")] == ["circular"]
+
+
+def test_applies_to_user_rules():
+    assert applies_to_user({"programmes": ["UG"], "years": [1, 2, 3, 4]}, ARJUN)
+    assert not applies_to_user({"programmes": ["PG"]}, ARJUN)
+    assert not applies_to_user({"departments": ["CSE"], "semester": 5}, ARJUN)  # year 2 = semesters 3-4
+    assert applies_to_user({"departments": ["CSE"]}, {"role": "teacher", "department": "CSE"})
+
+
+def test_new_documents_flagged_after_first_sync():
+    kb = _kb_with_notes()
+    kb.new_ids.add(5)
+    assert next(d for d in kb.listing(None, "visitor") if d["id"] == 5)["is_new"]

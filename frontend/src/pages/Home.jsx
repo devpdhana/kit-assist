@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import DocumentsCard from '../components/DocumentsCard'
 import VoiceAssistant from '../components/VoiceAssistant'
 
 const inr = (n) => '₹' + Number(n).toLocaleString('en-IN')
@@ -51,6 +52,7 @@ export default function Home() {
             </table>
             <p className="muted">Hostel fee is extra. Admission is on 12th PCM marks - no entrance exam, no application fee.</p>
           </section>
+          {info?.documents && <DocumentsCard documents={info.documents} />}
           {p?.contact && (
             <section className="card">
               <h2>Contact</h2>

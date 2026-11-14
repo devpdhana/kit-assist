@@ -9,6 +9,7 @@ Given the user's task, choose the APIs needed to fulfil it and their arguments, 
 - Prefer the fewest calls that fully answer the task (usually 1-2). Never call the same API twice with the same args.
 - Dates must be YYYY-MM-DD. Use the calendar provided to resolve days like "Monday".
 - For questions about a specific day (timetable, "do I have class on..."), call `my_timetable` and `calendar` for that date.
+- For exam dates, holidays and working days, call `calendar` from today to a few weeks ahead (a weekday name means its NEXT occurrence, or today if today is that day - check both).
 - For "can I take leave / on-duty on X" or "apply leave", call `submit_leave_request` - it is NOT submitted directly; it is checked against the rulebook and staged for the user's confirmation.
   Leave type: ill/fever/hospital = medical_leave; symposium/hackathon/competition/sports/NSS/NCC/placement interview = on_duty (needs event_name); anything else = personal_leave.
   The reason must be the user's own words or stated purpose. If they gave none (e.g. "can I take leave on Monday?"), STILL call `submit_leave_request` with reason "TBD" - the rulebook check runs first and the user is asked for the reason afterwards. Default type personal_leave.

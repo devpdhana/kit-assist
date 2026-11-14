@@ -75,6 +75,7 @@ _DATA = re.compile(r"\b(my|pending|status|attendance|timetable|schedule|class(es
 _RULES = re.compile(r"\b(rule|policy|allowed|can i|deadline|fee|fees|scholarship|document|circular|minimum|maximum|how many|condonation|hostel)\b", re.I)
 _LESSON = re.compile(r"\b(bcnf|normal form|normalisation|normalization|sql|join|er model|relational|dbms|transaction|functional dependenc)", re.I)
 _ADMISSION = re.compile(r"\b(course|eligib|seat|branch|admission|cutoff|cut.off|join)\b", re.I)
+_DOCLIST = re.compile(r"\b(what|which|any|list|show)\b.*\b(circulars|documents|announcements|handbook (edition|applies)|notes available)\b|\bwhich handbook\b|\bnew (circular|announcement)s?\b", re.I)
 _SMALL = re.compile(r"^(hi|hello|hey|thanks|thank you|good (morning|afternoon|evening)|what can you do)\b", re.I)
 
 
@@ -82,6 +83,8 @@ def classify_by_rules(query: str, role: str) -> QueryContext:
     q = query.strip()
     if _SMALL.search(q):
         return QueryContext(intent="small_talk", needs_service=False, needs_knowledge=False, task=q, reason="greeting (rules)")
+    if _DOCLIST.search(q):
+        return QueryContext(intent="rules_or_documents", needs_service=True, needs_knowledge=False, task=q, reason="document listing (rules)")
     if _LESSON.search(q):
         return QueryContext(intent="lesson_doubt", needs_service=False, needs_knowledge=True, task=q, knowledge_query=q, reason="subject keywords (rules)")
     if _ACTION.search(q) and not re.search(r"\b(how many|what is|deadline|rule)\b", q, re.I):

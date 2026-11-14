@@ -1,6 +1,7 @@
 """HTTP API for the React frontend."""
 
 import logging
+import re
 import time
 from collections import defaultdict
 from typing import Literal
@@ -94,7 +95,37 @@ async def public_info():
         profile, courses, today = await college.profile(), await college.courses(), await college.today()
     except CollegeError:
         raise HTTPException(502, "College system unavailable")
-    return {"profile": profile, "courses": courses, "today": today, "documents": [d for d in kb.summary() if d["type"] != "lesson_notes"]}
+    return {"profile": profile, "courses": courses, "today": today, "documents": kb.listing(None, "visitor")}
+
+
+# ---------------------------------------------------------------- documents
+def _can_see(doc: dict, s: Session) -> bool:
+    """Lesson notes are for logged-in users only; everything else is public."""
+    return doc["type"] != "lesson_notes" or s.auth is not None
+
+
+@router.get("/documents")
+async def documents(s: Session = Depends(get_session)):
+    user = s.auth["user"] if s.auth else None
+    return {"documents": kb.listing(user, user["role"] if user else "visitor"), "last_sync": kb.last_sync}
+
+
+@router.get("/documents/{doc_id}/file", dependencies=[Depends(rate_limit(30))])
+async def document_file(doc_id: int, s: Session = Depends(get_session)):
+    """Proxy the PDF so the participant key never reaches the browser."""
+    doc = kb.get_doc(doc_id)
+    if not doc or not _can_see(doc, s):
+        raise HTTPException(404, "Not found")
+    try:
+        pdf = await college.document_file(doc_id)
+    except CollegeError:
+        raise HTTPException(502, "College system unavailable")
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", doc["title"])[:80] or f"document_{doc_id}"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{safe}.pdf"', "Cache-Control": "private, max-age=300"},
+    )
 
 
 # ---------------------------------------------------------------- auth

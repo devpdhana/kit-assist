@@ -113,3 +113,26 @@ def test_reply_and_transcript_cleaning():
 
 def test_forged_session_cookie_rejected():
     assert unsign("abc.def") is None and unsign(None) is None
+
+
+def test_document_listing_routes_to_service_for_every_role():
+    for role in ("visitor", "student", "teacher"):
+        ctx = classify_by_rules("What circulars are there?", role)
+        assert ctx.needs_service and ctx.intent == "rules_or_documents", role
+        assert allowed(role, "list_documents")
+
+
+def test_evaluation_catches_wrong_weekday():
+    from src.agents.evaluation_agent import weekday_mismatches
+
+    assert weekday_mismatches("Your exam is on Friday, 25 November 2026.", "2026-11-21") == ["25 November is a Wednesday, not Friday"]
+    assert weekday_mismatches("Your exam is on Wednesday, 25 November.", "2026-11-21") == []
+    ev = EvaluationAgent().score("Your exam is on Friday, 25 November.", _state(), "2026-11-25")
+    assert not ev.passed and any("weekday" in c.lower() for c in ev.critical_issues)
+
+
+def test_calendar_entries_get_spoken_weekdays():
+    from src.agents.service_agent import _with_weekdays
+
+    e = _with_weekdays([{"date": "2026-11-28", "type": "working_day", "follows_weekday": 1}])[0]
+    assert e["date_spoken"] == "Saturday, 28 November" and e["follows_timetable_of"] == "Monday"

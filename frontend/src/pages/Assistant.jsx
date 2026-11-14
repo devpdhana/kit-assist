@@ -1,5 +1,6 @@
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth'
+import DocumentsCard from '../components/DocumentsCard'
 import VoiceAssistant from '../components/VoiceAssistant'
 
 const STUDENT = [
@@ -9,6 +10,7 @@ const STUDENT = [
   'What classes do I have on Thursday?',
   'Status of my requests',
   'Explain BCNF with an example',
+  'What circulars are there?',
 ]
 const TEACHER = ['Show pending requests', 'Approve request 68', 'What is the on-duty proof deadline?', 'Show attendance for my class']
 
@@ -39,6 +41,7 @@ export default function Assistant() {
           onUnauthorized={() => refresh().then(() => navigate('/login'))}
         />
       </section>
+      <DocumentsCard title="Your documents" />
     </main>
   )
 }

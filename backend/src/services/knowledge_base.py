@@ -187,6 +187,29 @@ def classify_documents(docs: list[dict], today: str) -> dict[int, str]:
     return status
 
 
+def applies_to_user(applies_to: dict | None, user: dict) -> bool:
+    """Does a document's `applies_to` cover this user? Unknown keys are ignored."""
+    if not applies_to:
+        return True
+    if user.get("role") == "teacher":  # teachers need every document that applies to their department
+        depts = applies_to.get("departments")
+        return not depts or user.get("department") in depts
+    checks = {
+        "programmes": user.get("programme"),
+        "departments": user.get("department"),
+        "years": user.get("year_of_study"),
+    }
+    for key, value in checks.items():
+        allowed = applies_to.get(key)
+        if allowed and value not in allowed:
+            return False
+    sem = applies_to.get("semester")
+    year = user.get("year_of_study")
+    if sem and year and sem not in (2 * year - 1, 2 * year):
+        return False
+    return True
+
+
 class KnowledgeBase:
     def __init__(self) -> None:
         self.docs: list[dict] = []
@@ -197,6 +220,7 @@ class KnowledgeBase:
         self._text_cache: dict[str, list[str]] = {}
         self.last_sync: str | None = None
         self.last_error: str | None = None
+        self.new_ids: set[int] = set()
 
     def load(self, docs: list[dict], pages_by_id: dict[int, list[str]], today: str) -> None:
         self.docs = docs
@@ -233,9 +257,10 @@ class KnowledgeBase:
                 pages[d["id"]] = self._text_cache[key]
             before = {f"{d['id']}@{d.get('version')}" for d in self.docs}
             self.load(docs, pages, today["date"])
-            added = [d["title"] for d in docs if f"{d['id']}@{d.get('version')}" not in before]
-            if before and added:
-                log.info("new documents: %s", ", ".join(added))
+            added = [d for d in docs if f"{d['id']}@{d.get('version')}" not in before]
+            if before and added:  # anything appearing after the first sync is announced as new
+                self.new_ids |= {d["id"] for d in added}
+                log.info("new documents: %s", ", ".join(d["title"] for d in added))
             self.last_sync = datetime.now(timezone.utc).isoformat()
             self.last_error = None
             log.info("synced %d docs, %d chunks", len(docs), len(self.chunks))
@@ -293,6 +318,40 @@ class KnowledgeBase:
         if c.non_binding:
             label += " | NON-BINDING DRAFT/PROPOSAL - has NO effect"
         return label
+
+    def listing(self, user: dict | None = None, role: str = "visitor", doc_type: str | None = None) -> list[dict]:
+        """Document list enriched with trust status, relevance to this user and a 'new' flag.
+        Visitors never see lesson notes (they are for enrolled students)."""
+        status_text = {
+            "circular-in-force": "circular in force (overrides the handbook)",
+            "circular-upcoming": "circular not yet in effect",
+            "current": "current",
+            "superseded": "superseded by a newer edition",
+            "upcoming": "not yet in effect",
+        }
+        out = []
+        for d in self.docs:
+            if role == "visitor" and d["type"] == "lesson_notes":
+                continue
+            if doc_type and d["type"] != doc_type:
+                continue
+            st = self.status.get(d["id"], "current")
+            out.append({
+                "id": d["id"],
+                "title": d["title"],
+                "type": d["type"],
+                "version": d.get("version"),
+                "effective_date": d.get("effective_date"),
+                "status": status_text.get(st, st),
+                "applies_to": d.get("applies_to"),
+                "applies_to_you": applies_to_user(d.get("applies_to"), user) if user else None,
+                "is_new": bool(d.get("is_surprise")) or d["id"] in self.new_ids,
+                "download": f"/api/documents/{d['id']}/file",
+            })
+        return out
+
+    def get_doc(self, doc_id: int) -> dict | None:
+        return next((d for d in self.docs if d["id"] == doc_id), None)
 
     def summary(self) -> list[dict]:
         return [{"id": d["id"], "title": d["title"], "type": d["type"], "version": d.get("version"),

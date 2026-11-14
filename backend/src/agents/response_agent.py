@@ -142,6 +142,12 @@ def _summarize(api: str, data) -> str:
         return ("Coming up: " + "; ".join(f"{e['title']} on {pretty(e['date'])}" for e in data[:5]) + ".") if data else "No holidays or exams in that period."
     if api == "placement_drives" and isinstance(data, list):
         return "Active drives: " + "; ".join(f"{d['company']}, minimum CGPA {d['min_cgpa']}, deadline {pretty(d['deadline'])}" for d in data) + "."
+    if api == "list_documents" and isinstance(data, list):
+        if not data:
+            return "I couldn't find any documents of that kind."
+        return "Available documents: " + "; ".join(
+            f"{d['title']} ({d['status']}{', new' if d['is_new'] else ''})" for d in data
+        ) + "."
     if api == "my_timetable" and isinstance(data, list):
         return f"You have {len(data)} periods a week. Ask me about a specific day for details."
     return ""
