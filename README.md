@@ -84,7 +84,14 @@ Free AI keys are available from Groq (https://console.groq.com/keys) and Gemini 
 
 ## Deploy
 
-A single Docker image: Node builds the React app, then a Python image serves both the API and the frontend. `render.yaml` is included. Create a Blueprint from this repo and set `COLLEGE_API_KEY`, `GROQ_API_KEY` and `GEMINI_API_KEY`. The health check is at `/api/health`, and API docs are at `/api/docs`.
+| Part | Where | Why |
+|---|---|---|
+| **Backend** (FastAPI + LangGraph) | Coolify, Docker image from `backend/Dockerfile`, volume at `/app/data` for history | Always on: no cold starts for a voice app |
+| **Frontend** (React build) | Render Static Site (`render.yaml`); `frontend/vercel.json` is an equivalent fallback | Free static hosting that never sleeps |
+
+The frontend host **rewrites `/api/*` to the backend**, so the browser talks to a single origin. Secure SameSite=Strict session cookies and the CSRF header keep working without CORS or third-party cookies.
+The backend needs `COLLEGE_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY` and `SESSION_SECRET` as environment variables. The health check is at `/api/health`, and API docs are at `/api/docs`.
+The root `Dockerfile` builds an all-in-one image (backend serving the built frontend) for single-host deployments.
 
 ## Security
 

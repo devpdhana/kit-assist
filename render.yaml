@@ -1,18 +1,35 @@
+# Frontend: Render Static Site (free static sites never sleep).
+# /api/* is rewritten (proxied) to the FastAPI backend on Coolify, so the
+# browser sees ONE origin: SameSite=Strict session cookies and the CSRF
+# header keep working, and no CORS or third-party cookies are needed.
 services:
   - type: web
-    name: kit-assist
-    runtime: docker
-    plan: free
-    dockerfilePath: ./Dockerfile
-    healthCheckPath: /api/health
-    envVars:
-      - key: COLLEGE_API_BASE
-        value: https://ht.knowvally.com
-      - key: COLLEGE_API_KEY
-        sync: false
-      - key: GROQ_API_KEY
-        sync: false
-      - key: GEMINI_API_KEY
-        sync: false
-      - key: SESSION_SECRET
-        generateValue: true
+    name: kit-assist-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    pullRequestPreviewsEnabled: false
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://gt25g74jmtkdpfw1sfabrdkt.82.29.165.177.sslip.io/api/*
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
+      - path: /*
+        name: Permissions-Policy
+        value: microphone=(self), camera=(), geolocation=()
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"

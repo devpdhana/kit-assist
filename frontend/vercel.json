@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://gt25g74jmtkdpfw1sfabrdkt.82.29.165.177.sslip.io/api/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
