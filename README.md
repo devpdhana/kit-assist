@@ -1,5 +1,7 @@
 # KIT Assist: a multi-agent voice assistant for Knotopian Institute of Technology
 
+[![CI](https://github.com/devpdhana/kit-assist/actions/workflows/ci.yml/badge.svg)](https://github.com/devpdhana/kit-assist/actions/workflows/ci.yml)
+
 A real-time **voice** assistant for a dummy college. Prospective students, students and teachers talk to it and hear spoken replies. A **LangGraph supervisor** orchestrates specialist agents: it understands the query, calls the college system, checks the rulebook, evaluates every reply before it is spoken, and **asks before acting**.
 
 **Stack:** React (Vite) · Python FastAPI · LangChain + LangGraph · Groq (Whisper STT + LLMs) · Google Gemini (fallback) · SQLite
@@ -57,7 +59,7 @@ backend/                       Python 3.12 · FastAPI · LangGraph
   src/workflows/               LangGraph: state/, nodes/, routing/, assistant_workflow.py
   src/services/                college client, policy guard, knowledge base, LLM factory, STT, sessions, history
   src/api/routes.py            REST API (chat, voice, auth, history, health)
-  tests/                       pytest: policy, knowledge trust, routing, evaluation, role scoping
+  tests/                       pytest (39): policy, knowledge trust, routing, evaluation, role scoping, history
 frontend/                      React + Vite
   src/components/              VoiceAssistant, AgentTrace
   src/hooks/                   useVoiceRecorder (MediaRecorder + VAD), useSpeech (TTS)
@@ -72,7 +74,8 @@ cd backend
 cp .env.example .env          # COLLEGE_API_KEY, GROQ_API_KEY, GEMINI_API_KEY, SESSION_SECRET
 uv sync
 uv run uvicorn src.main:app --port 8000
-uv run pytest                 # 31 tests
+uv run pytest                 # 39 tests
+uvx ruff check src tests      # lint (clean)
 
 # frontend (dev, proxies /api to :8000)
 cd frontend && npm install && npm run dev      # http://localhost:5173
@@ -92,6 +95,13 @@ Free AI keys are available from Groq (https://console.groq.com/keys) and Gemini 
 The frontend host **rewrites `/api/*` to the backend**, so the browser talks to a single origin. Secure SameSite=Strict session cookies and the CSRF header keep working without CORS or third-party cookies.
 The backend needs `COLLEGE_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY` and `SESSION_SECRET` as environment variables. The health check is at `/api/health`, and API docs are at `/api/docs`.
 The root `Dockerfile` builds an all-in-one image (backend serving the built frontend) for single-host deployments.
+
+## Known limitations
+
+- **Single instance by design.** Sessions and paused confirmations (LangGraph `MemorySaver`) live in process memory, and history is stored in SQLite on a persistent volume. A backend restart logs users out and drops any pending "Shall I go ahead?". Scaling out would mean Redis-backed sessions and a Postgres checkpointer.
+- **Keyword document search (BM25)**, not embeddings. It's fast and free, but unusual phrasings can miss. The Knowledge agent blends a filtered search with the best overall hits to compensate.
+- **Voice output uses the browser's speech synthesis**, so voice quality depends on the device.
+- **No frontend unit tests.** The frontend is covered by lint, a build check in CI, and manual end-to-end testing.
 
 ## Security
 
